@@ -1,6 +1,6 @@
 ###################################################################################################
 #                                                                                                 #
-#                             Geomatique  avec R - Exercice appliqué                               #
+#                             Geomatique  avec R - Exercice appliqué                              #
 #                                                                                                 #
 ###################################################################################################
 
@@ -15,252 +15,362 @@
 # install.packages("maptiles")
 # install.packages("osrm")
 # install.packages("tidygeocoder")
+# install.packages("spatstat")
+# install.packages("osmdata")
+# install.packages("terra")
 
 library(sf)
+library(maptiles)
+library(osmdata)
+library(tidygeocoder)
+library(spatstat)
 library(mapsf)
 library(mapview)
-library(maptiles)
+library(terra)
 library(osrm)
-library(tidygeocoder)
+
 
 
 
 
 ###################################################################################################
-# A. Import des données
+# A. Import des données IGN (BD CARTO)
 ###################################################################################################
 
 # Lister les couches géographiques d'un fichier GeoPackage
-st_layers("data/GeoSenegal.gpkg")
+st_layers("data/TAIS_workshop.gpkg")
 
 ## A.1 Import des données géographiques
-pays <- st_read(dsn = "data/GeoSenegal.gpkg", layer = "Pays_voisins")
-sen <-st_read(dsn = "data/GeoSenegal.gpkg", layer = "Senegal")
-reg <-st_read(dsn = "data/GeoSenegal.gpkg", layer = "Regions")
-dep <-st_read(dsn = "data/GeoSenegal.gpkg", layer = "Departements")
-loc <-st_read(dsn = "data/GeoSenegal.gpkg", layer = "Localites")
-USSEIN <-st_read(dsn = "data/GeoSenegal.gpkg", layer = "USSEIN")
-routes <-st_read(dsn = "data/GeoSenegal.gpkg", layer = "Routes")
+mun <- st_read(dsn = "data/TAIS_workshop.gpkg", layer = "arrondissment")
+road <-st_read(dsn = "data/TAIS_workshop.gpkg", layer = "troncon_routier")
+railway <-st_read(dsn = "data/TAIS_workshop.gpkg", layer = "voie_ferree")
+water <-st_read(dsn = "data/TAIS_workshop.gpkg", layer = "surface_hydro")
 
-
-## A.2 Reprojection des couches géographiques 
-pays <- st_transform(pays,  "EPSG:3857")
-sen <- st_transform(sen,  "EPSG:3857")
-reg <- st_transform(reg,  "EPSG:3857")
-dep <- st_transform(dep,  "EPSG:3857")
-loc <- st_transform(loc,  "EPSG:3857")
-USSEIN <- st_transform(USSEIN,  "EPSG:3857")
-routes <- st_transform(routes,  "EPSG:3857")
+# Cartographie des données
+library(mapsf)
+mf_map(mun)
+mf_map(railway, col = "grey10", add= TRUE)
+mf_map(road, col = "grey50", add= TRUE)
+mf_map(water, col = "blue", add= TRUE)
+mf_map(mun, border = "red", col = NA, add= TRUE)
 
 
 ###################################################################################################
-# B. Géocadage d’une adresse 
+# B. Récupération données OSM
 ###################################################################################################
 
-## B.1 Récupération de coordonnées géographiques
+emprise <- mun |> 
+            st_transform(crs = "EPSG:4326")|>
+            st_buffer(dist = 200) |>
+            st_bbox() 
 
-# Construction d'un data.frame avec nom et adresse
-Mosquee_Touba <- data.frame(name = "Grande Mosquée de Touba",
-                            addresse = "Grande Mosquée de Touba, Sénégal")
+###################################################################################################
+# 1. Fond de carte 
+###################################################################################################
 
-# Géocodage de l'adresse à partir de la base de données OpenStreetMap
-library(tidygeocoder)
-Mosquee_Touba_loc <- geocode(.tbl = Mosquee_Touba, address =  addresse)
-
-
-## B.2 Construisez un objet sf (couche géographique) à partir des coordonnées (WGS84) récupérées.
-Mosquee_Touba_sf <- st_as_sf(Mosquee_Touba_loc, coords = c("long", "lat"), crs = 4326)
-
-
-## B.3 Transformez cette nouvelle couche géographique en projection WGS 84 / UTM zone 28N (32628)
-Mosquee_Touba_sf <- st_transform(Mosquee_Touba_sf, crs = "EPSG:3857")
-
-
-## B.4 Affichez le point sur une carte interactive avec le package mapview
-mapview(Mosquee_Touba_sf)
-
+library(maptiles)
+tiles <- get_tiles(x = emprise, 
+                   project = FALSE, 
+                   crop = TRUE, 
+                   zoom = 13, 
+                   cachedir = "cache")
 
 
 ###################################################################################################
-# C. Calcul de centroïdes (point de d’arrivée)
+# 2. Données vectorielles 
+###################################################################################################
+
+# Définition d'une bounding box (emprise Paris)
+q <- opq(bbox = emprise)
+
+# Extraction des restaurants
+req <- add_osm_feature(opq = q, key = 'amenity', value = "restaurant")
+res <- osmdata_sf(req)
+
+# Réduction du resultats :
+# les points composant les polygones sont supprimés
+res <- unique_osmdata(res)
+
+resto_point <- res$osm_points
+
+# extraire les centroïdes des polygones
+resto_poly_point <- st_centroid(res$osm_polygons)
+
+# identifier les champs en commun
+chps <- intersect(names(resto_point), names(resto_poly_point))
+
+# Union des deux couches
+resto <- rbind(resto_point[, chps], resto_poly_point[, chps])
+
+resto  <- st_transform(resto , crs = "EPSG:3857")
+
+
+
+# Affciahge 
+
+mf_raster(tiles)
+mf_map(resto, cex= 0.2, add = TRUE)
+
+###################################################################################################
+# D. Géocodage d'adresse
 ###################################################################################################
 
 
-# Créez une couche de point en calculant les centroïdes de départements sénégalais.
-dep_pt <- st_centroid(dep)
+etab <- data.frame(nom = c("EHESS", "SciencePo"),
+                    rue = c("54 boulevard Raspail, 75006 Paris, France", 
+                            "27 rue Saint-Guillaume, 75007 Paris, France"))
+
+etab_geo <- geocode(.tbl = etab, address = "rue", quiet = TRUE)
+
+
+etab_sf <- st_as_sf(etab_geo , coords = c("long", "lat"), crs = 'EPSG:4326')
+
+mapview(etab_sf)
+
+
+################
+# AFFICHAGE
+################
+
+st_crs(resto)
+
+tiles_2154 <- project(x = tiles, y = "EPSG:2154")
+resto_2154 <- st_transform(resto , crs = "EPSG:2154")
+etab_2154 <- st_transform(etab_sf , crs = "EPSG:2154")
+
+
+mf_raster(tiles_2154)
+mf_map(railway, col = "grey10", add= TRUE)
+mf_map(road, col = "grey50", add= TRUE)
+mf_map(water, col = "blue", add= TRUE)
+mf_map(resto_2154, col = "green4", cex= 0.1, add= TRUE)
+mf_map(etab_2154, col = "red4", cex=1, add= TRUE)
+mf_map(mun, border = "red", col = NA, add= TRUE)
 
 
 
 
-###################################################################################################
-# D. Récupération de tuiles (fond de carte) OpenStreetMap
-###################################################################################################
-
-
-# En utilisant la librarie maptiles, récupérez une tuile OSM pour l’emprise du Sénégal. 
-# Utilisez un buffer de plusieurs kilomètres autour des limites du sénégal 
-osm_tiles <- get_tiles(x = st_buffer(sen, dist = 30000), zoom = 7, crop = TRUE)
-
-
-
-
-###################################################################################################
-# E. Affichage des données construites et récupérées
-###################################################################################################
-
-# mf_export(x = sen, filename = "img/carte_osm.png", width = 800)
-
-# Affichage de la tuile
-mf_raster(osm_tiles)
-
-# Affichage des données vectorielles
-mf_map(dep_pt, border = NA, col="blue" , cex = 2, pch = 20, add = TRUE)
-mf_map(dep, border = "black", col=NA , add = TRUE)
-mf_map(Mosquee_Touba_sf, border = NA, col="red" , cex = 3, pch = 20, add = TRUE)
-
-# Sources
-mf_credits(get_credit("OpenStreetMap"), cex = 1)
-
-# dev.off()
-
-
-
-
+################
+# EXPLORATION
+################
 
 
 ###################################################################################################
-# F. Calculez une matrice de distances
+# D. Nombre de restaurant  dans un rayon de 50Om ?
 ###################################################################################################
 
-## F.1 Distance euclidienne
-# Calculez une matrice de distance euclidienne (m) entre la grande Mosquée de Touba et l’ensemble des centroïdes des départements.
-mat_eucli_km <- st_distance(x = Mosquee_Touba_sf, y = dep_pt) 
+# Calcul d'un buffer de 50 kilomètres
+EHESS_buff500m <- st_buffer(etab_2154[1,], 500)
 
-# Changement des noms de ligne et de colonne
-rownames(mat_eucli_km) <- Mosquee_Touba_sf$name
-colnames(mat_eucli_km) <- dep_pt$NAME_2
+## D.2. Séléctionnez les localités situées dans la zone tampon de 500m
+# Intersection entre les localités et le buffer
+inters_resto_buff <- st_intersection(resto_2154, EHESS_buff500m)
 
+## D.3 Combien de ces localités abritent au moins une école ?
+# Nombre de localités dans un rayon de 50km ?
+nb_resto_500m_EHESS <- nrow(inters_resto_buff)
 
-
-
-## F.2 Distance par la route (réseau routier d’OpenStreetMap)
-dist <- osrmTable(src = Mosquee_Touba_sf, 
-                  dst = dep_pt,
-                  measure = c("distance", "duration"))
-
-
-
-## F.3 Ajoutez les différentes distances calculées à la couche géographiques des centroïdes des départements
-# mètres -> kilomètres
-dep_pt$IRSP_eucli_dist <- as.numeric(mat_eucli_km) / 1000
-# mètres -> kilomètres
-dep_pt$IRSP_route_km <- as.numeric(dist$distances) / 1000
-# Minutes -> heures
-dep_pt$IRSP_route_hr <- as.numeric(dist$durations) / 60
-
+nb_resto_500m_EHESS
 
 
 ###################################################################################################
-# G. Calcul d'indicateurs 
+# E. Utilisation d’un maillage régulier
 ###################################################################################################
 
-## G.1 Calcul d’indicateurs globaux d’accessibilité
-
-# Calculez la médianne et la moyenne pour les trois types de distances récupérés
-mean(dep_pt$IRSP_eucli_dist)
-max(dep_pt$IRSP_eucli_dist)
-
-mean(dep_pt$IRSP_route_km)
-max(dep_pt$IRSP_route_km)
-
-mean(dep_pt$IRSP_route_hr)
-max(dep_pt$IRSP_route_hr)
+## E.1 Créez un maillage régulier de carreaux de 500m de côté sur l'ensemble de Paris
+grid <- st_make_grid(mun, cellsize = 500, square = TRUE)
+# Transformer la grille en objet sf avec st_sf()
+grid <- st_sf(geometry = grid)
+# Ajouter un identifiant unique, voir chapitre 3.7.6
+grid$id_grid <- 1:nrow(grid)
 
 
-
-## G.2 Calcul d’indicateurs de performance routière
-
-# Indice de sinuosité 
-dep_pt$ind_sinuo <- round(dep_pt$IRSP_route_km / dep_pt$IRSP_eucli_dist, 2)
-# Indice de vitesse sur route
-dep_pt$ind_speed <- round(dep_pt$IRSP_route_km / dep_pt$IRSP_route_hr, 1)
-# Indice global de performance
-dep_pt$ind_perf <- round(dep_pt$ind_speed / dep_pt$ind_sinuo, 1)
+## E.2 Récuperez le carreau d'appartenance (id) de chaque lrestaurants
+grid_resto<- st_intersects(grid, resto_2154, sparse = TRUE)
 
 
+## E.3 Comptez le nombre de localités dans chacun des carreaux.
+grid$nb_resto <- sapply(grid_resto, FUN = length)
 
-## G.3 Cartographie de l’indice global de performance
+# E.4 Découpez la grille en fonction des limites de Paris (optionel)
+grid_mun <- st_intersection(grid, st_union(mun))
 
-# mf_export(x = st_buffer(sen, dist = 30000), filename = "img/carte_indice_perf.png", width = 800)
 
-# Affichage de la tuile
-mf_raster(osm_tiles)
-# Cartographie de l'indice de performance
-mf_map(x = dep_pt,
-       var = "ind_perf",
+###################################################################################################
+# F. Enregistrez la grille régulière dans le fichier GeoSenegal.gpkg
+###################################################################################################
+
+# st_write(obj = grid_sen, dsn = "data/GeoSenegal.gpkg", layer = "grid_sen", delete_layer = TRUE)
+
+mf_raster(tiles_2154)
+mf_map(grid_mun, 
+       var = "nb_resto", 
        type = "choro",
-       pal = "Peach",
-       leg_pos = "right",
-       leg_title = "Indice de\nperformance\nglobale",
-       breaks = "jenks",
-       nbreaks = 8, 
-       leg_size = 1.1,
-       leg_title_cex = 0.9,
-       leg_val_cex = 0.8,
-       leg_val_rnd = 0,
        border = "white",
-       lwd = 1.5,
-       cex = 2.5,
-       add = TRUE)
-
-# Affichage de la grande Mosquee de Touba
-mf_map(Mosquee_Touba_sf, lwd = 4, pch = 24, col="green4" , cex = 2.1, add = TRUE)
-# Titre
-mf_title("Performance du réseau routier depuis le grande Mosquee de Touba, selon OpenStreetMap (OSRM), 2014", fg = "white")
-# Sources
-mf_credits(paste0(get_credit("OpenStreetMap"), " - OSRM, 2014"), cex = 0.8)
-
-# dev.off()
+       pal = "Teal", 
+       alpha = .6,
+       leg_pos = "topright",
+       leg_val_rnd = 1,
+       leg_title = paste0("Nombre de restaurants\n",
+                          "Carroyage de 500m\n"), add = TRUE)
 
 
-## G.4 Itinéraire le plus performant ?
-city_max_perf <- dep_pt[dep_pt$ind_perf == max(dep_pt$ind_perf),]
+mf_raster(tiles_2154)
+mf_map(grid_mun, add = TRUE, col = NA)
+mf_map(grid_mun, 
+       var = "nb_resto", 
+       type = "prop",
+       border = "white",
+        inches = 0.1,
+       leg_pos = "topright",
+       leg_title = paste0("Nombre de restaurants\n",
+                          "Carroyage de 500m\n"), add = TRUE)
 
-
-
+mf_raster(tiles_2154)
+mf_map(grid_mun, add = TRUE, col = NA)
+mf_map(grid_mun, 
+       var = c("nb_resto", "nb_resto"), 
+       type = "prop_choro",
+       pal = "Teal", 
+       breaks = "quantile",
+       border = "white",
+       inches = 0.1,
+       leg_pos = "topright",
+       leg_title = paste0("Nombre de restaurants\n",
+                          "Carroyage de 500m\n"), add = TRUE)
 
 ###################################################################################################
-# H. Récupération d’itinéraire
+# E. Densité noyau kernel KDE
+###################################################################################################
+
+p <- as.ppp(X = st_coordinates(resto_2154), 
+            W = as.owin(st_bbox(resto_2154)))
+ds <- density.ppp(x = p, sigma = 150, eps = 10, positive = TRUE)
+plot(ds)
+
+library(terra)
+r <- rast(ds) * 100 * 100
+crs(r) <- st_crs(resto_2154)$wkt
+
+library(mapiso)
+# Limites des classes
+maxval <- max(values(r))
+bks <-  c(seq(0, floor(maxval), 1), maxval)
+# Transformation du raster en polygones
+iso_dens <- mapiso(r, breaks = bks)
+# Suppression de la première classe ([0, 1[)
+iso_dens <- iso_dens[-1, ]
+
+
+mf_raster(tiles_2154)
+mf_map(iso_dens, 
+       var = "isomin", 
+       type = "choro",
+       breaks = bks[-1], 
+       border = "white",
+       pal = "Teal", 
+       alpha = .6,
+       leg_pos = "topright",
+       leg_val_rnd = 1,
+       leg_title = paste0("Densité de restaurants dans\n",
+                          "un voisinage gaussien (σ = 150m),\n",
+                          "en restaurants par hectare"), add = TRUE)
+
+mf_map(etab_2154, cex = 1, add = TRUE)
+
+
+
+
+mf_map(mun, col = "grey85")
+mf_map(railway, col = "grey60", add= TRUE)
+mf_map(road, col = "grey75", cex = .1, add= TRUE)
+mf_map(water, col = "steelblue2", border = NA, add= TRUE)
+mf_map(mun, col = NA, border = "grey20", lwd = 0.2, add= TRUE)
+mf_map(iso_dens, 
+       var = "isomin", 
+       type = "choro",
+       breaks = bks[-1], 
+       border = "white", 
+       lwd = 0.1,
+       pal = "Teal", 
+       alpha = .7,
+       leg_pos = "topright", 
+       leg_size = 0.8,
+       leg_val_rnd = 1,
+       leg_title_cex = 0.6,
+       leg_title = paste0("Nombre de restaurants\npar hectare, voisinage\n",
+                          "gaussien (σ = 150m)\n"), add = TRUE)
+mf_map(etab_2154[1,], cex = 1, col = "red", add = TRUE)
+mf_annotation(
+  x = etab_2154[1,], 
+  txt = "EHESS", 
+  halo = TRUE, 
+  cex = 0.5,pos = "topleft"
+)
+mf_legend(val_cex = 0.6, title = NA, size = 0.6,
+  type = "typo", 
+  val = c("railway", "road", "water"),
+  pal = c("grey60", "grey75", "steelblue2"), 
+  pos = "topleft"
+)
+
+mf_layout(
+  title = "Densité de restaurants à Paris",
+  credits = "",
+  arrow = FALSE, 
+  scale = TRUE
+)
+
+mf_credits("Auteurs : H. Pecout & T. Giraud\nSources : BD CARTO, IGN 2024 - OpenStreetMap 2024",
+           cex = 0.5)
+
+###################################################################################################
+# E. Calcul accessibilité
 ###################################################################################################
 
 
-## H.1 Récupération de l’ititnéraire “Mosquee Touba - Dakar”
-route <- osrmRoute(src = Mosquee_Touba_sf, dst = city_max_perf)
+# Extraction centroide zones denses
+zone_dense <- iso_dens[iso_dens$isomax == max(iso_dens$isomax), ]
+zones_denses <- st_cast(zone_dense, "POLYGON")
+centres_denses <- st_centroid(zones_denses)
+
+mat_dist_eucli <- st_distance(x = etab_2154, y = centres_denses)
+rownames(mat_dist_eucli) <- etab_2154$nom
 
 
-## H.2 Cartographie de l’itinéraire récupéré
+# Calcul de la matrice de distance entre les 2 adresses et les restaurants de Cahors
+mat_dist_road <- osrmTable(src = etab_2154,
+                           dst = centres_denses,
+                           osrm.profile = "foot",
+                           measure = c('duration', 'distance'))
 
-# mf_export(x = st_buffer(sen, dist = 30000), filename = "img/perf_itineraire.png", width = 800)
 
-# Affichage de la tuile
-mf_raster(osm_tiles)
 
-# Affichage de l'itinéraire le plus performant
-mf_map(route, col = "grey10", lwd = 6, add = TRUE)
-mf_map(route, col = "grey90", lwd = 1, add = TRUE)
+# Itinéraire EHESS - Centre le plus proche
+route <- osrmRoute(src = etab_2154[1,],
+                   dst = centres_denses[1,])
 
-# Affichage de la grande mosquee de Touba
-mf_map(Mosquee_Touba_sf, lwd = 4, pch = 24, col="green4" , cex = 2.1, add = TRUE)
+# Récupération d'un fond de carte OSM
+osm <- get_tiles(st_buffer(route, 500), zoom = 15, crop = TRUE)
 
-# Affichage de Dakar
-mf_map(city_max_perf, border = NA, col="red", pch = 20, cex = 3, add = TRUE)
+# Affichage
+mf_theme(mar = c(0,0,1.2,0))
+mf_raster(osm)
+mf_map(iso_dens, var = "isomin", type = "choro",
+       breaks = bks[-1], border = "white",
+       pal = "Teal", alpha = .5,
+       leg_pos = NA, add = TRUE)
+mf_map(route, col = "grey10", lwd = 6, add = T)
+mf_map(route, col = "grey90", lwd = 1, add = T)
+mf_map(etab_2154[1,], col = "red", cex= 3, add = T)
+mf_annotation(
+  x = etab_2154[1,], 
+  txt = "EHESS", 
+  halo = TRUE, 
+  cex = 1
+)
+mf_title("Itineraire plus plus court vers l'offre de restauration la plus dense")
 
-# Titre
-mf_title("Itinéraire le plus performant depuis la grand Mosquee de Touba, 2014", fg = "white")
-# Sources
-mf_credits(paste0(get_credit("OpenStreetMap"), " - OSRM, 2014"), cex = 0.8)
-
-# dev.off()
 
 
 
