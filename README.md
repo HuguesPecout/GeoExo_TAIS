@@ -8,8 +8,9 @@
 
 #### **A. Diaporama d'introduction**
 
-&rarr; Accessible en ligne à ce 
-[**lien**](https://tais-ehess-hpecout-bb467c23dd2ecba666035579bc786d99e7bb2c2b3553.gitpages.huma-num.fr/#/title-slide){target="_blank"}
+
+:warning: Accessible en ligne à ce 
+[**lien**](https://tais-ehess-hpecout-bb467c23dd2ecba666035579bc786d99e7bb2c2b3553.gitpages.huma-num.fr/#/title-slide).
 
 </br>
 
