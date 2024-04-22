@@ -45,8 +45,8 @@ Le fichier de données est mis à disposition dans le répertoire **data**.
 Trois d'entre-elles sont générées par le script "*Exercice_TAIS.R*" :
 
 - **restaurant_osm** : Couche des restaurants (Paris & environs). Source : OpenStreetMap, 2014   
-- **etab_esr** : Couche de point contenant la localisation de l'EHESS et de SciencePo, résultant d'adresses géocodées.   
-- **grid500m_paris** : Grille régulière (500m) vectorielle sur l'emprise de Paris.   
+- **etab_esr** : Couche contenant la localisation de l'EHESS et de SciencePo (résultat géocodage)    
+- **grid500m_paris** : Grille régulière (500m) vectorielle sur l'emprise de Paris  
 
 </br>
 
