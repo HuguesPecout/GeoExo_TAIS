@@ -1,6 +1,6 @@
 ###################################################################################################
 #                                                                                                 #
-#                             Geomatique  avec R - Exercice appliqué                              #
+#                               Traitement de l'IG avec R                                         #
 #                                                                                                 #
 ###################################################################################################
 
@@ -105,8 +105,8 @@ etab <- data.frame(nom = c("EHESS", "SciencePo"),
 # Géocodage (BD Nominatim - OSM)
 etab_geo <- geocode(.tbl = etab, address = "rue", quiet = TRUE)
 
-# Trandformation du tableau en objet sf
-# Utilisation des latitude & longitude
+# Transformation du tableau en objet sf
+# Utilisation des latitudes & longitudes
 etab_sf <- st_as_sf(etab_geo , coords = c("long", "lat"), crs = 'EPSG:4326')
 
 # Affichage interactif
@@ -146,7 +146,7 @@ EHESS_buff500m <- st_buffer(etab_2154[1,], 500)
 # Intersection entre les restaurants et le buffer de 500m
 inters_resto_buff <- st_intersection(resto_2154, EHESS_buff500m)
 
-# Nombre de restaurantss dans un rayon de 500m ?
+# Nombre de restaurants dans un rayon de 500m ?
 nrow(inters_resto_buff)
 
 
@@ -162,7 +162,7 @@ grid <- st_sf(ID = 1:length(grid), geometry = grid)
 mf_map(paris)
 mf_map(grid, col = NA, add = TRUE)
 
-# Récuperation du carreau d'appartenance de chaque restaurants
+# Récuperation du carreau d'appartenance de chaque restaurant
 grid_resto <- st_intersects(grid, resto_2154, sparse = TRUE)
 
 # Comptage du nombre de restaurants dans chacun des carreaux
@@ -336,7 +336,7 @@ mf_credits("Auteurs : H. Pecout & T. Giraud\nSources : BD CARTO, IGN 2024 - Open
 
 # Extraction des zones les plus denses (polygones)
 zone_dense <- iso_dens[iso_dens$isomax == max(iso_dens$isomax), ]
-# Multipolygone - > plusieurs polygone
+# Multipolygon - > plusieurs polygones
 zones_denses <- st_cast(zone_dense, "POLYGON")
 
 # Extraction des centroïdes des zones séléctionnées
