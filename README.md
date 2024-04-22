@@ -6,7 +6,14 @@
 
 </br>
 
-#### **A. Téléchargement de l’espace de travail**
+#### **A. Diaporama d'introduction **
+
+&rarr; Accessible en ligne à ce 
+[**lien**](https://tais-ehess-hpecout-bb467c23dd2ecba666035579bc786d99e7bb2c2b3553.gitpages.huma-num.fr/#/title-slide){target="_blank"}
+
+</br>
+
+#### **B. Téléchargement de l’espace de travail**
 
 Un projet Rstudio est téléchargeable à ce lien : [**https://github.com/HuguesPecout/GeoExo_TAIS**](https://github.com/HuguesPecout/GeoExo_TAIS)
 
@@ -20,7 +27,7 @@ Une fois le dossier dézippé, lancez le projet Rstudio en double-cliquant sur l
 
 </br>
 
-#### **B. Les données à disposition**
+#### **C. Les données à disposition**
 
 Le fichier de données est mis à disposition dans le répertoire **data**.
 
@@ -43,13 +50,13 @@ Trois d'entre-elles sont générées par le script "*Exercice_TAIS.R*" :
 </br>
 
 
-####  **C. Exercice**
+####  **D. Exercice**
 
 **L'ensemble des fonctionnalités utilisées sont présentées dans les manuels [Geomatique avec R](https://rcarto.github.io/geomatique_avec_r/) et [Cartographie avec R](https://rcarto.github.io/cartographie_avec_r/).**
 
 </br>
 
-#####  **Déroulé de la chaîne de traitement présentée :**
+**Déroulé de la chaîne de traitement présentée :**
 
 - **A.** Import de données & récupération de données OSM
 
