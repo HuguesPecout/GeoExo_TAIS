@@ -18,7 +18,6 @@ format:
 editor: visual
 ---
 
-
 ## Introduction
 
 Ceci est un document computationnel (notebook quarto) qui permet par exemple de mettre en page une chaîne de traitement. La mise en forme du texte se fait en langage [markdown](https://fr.wikipedia.org/wiki/Markdown).
@@ -29,6 +28,7 @@ Ceci est un document computationnel (notebook quarto) qui permet par exemple de 
 
 ```{r package}
 #| message: false
+#| warning: false
 
 # install.packages("sf")
 # install.packages("mapsf")
@@ -110,7 +110,7 @@ emprise <- paris |>
 
 \
 
-#### Extraction d'une tuile OSM 
+#### Extraction d'une tuile OSM
 
 Extraction de tuiles (fond de carte) OpenStreetMap avec le package `maptiles`.
 
@@ -221,7 +221,7 @@ mf_map(commune, border = "grey50", cex = 0.2, col = NA, add= TRUE)
 
 ## Exploration I - Répartition
 
-### Restaurants à proximité 
+### Restaurants à proximité
 
 Calcul du nombre de restaurants dans une zone de 500m autour de l'EHESS.
 
@@ -286,9 +286,9 @@ st_write(obj = grid_paris,
 
 \
 
-####  Cartographie thématique
+#### Cartographie thématique
 
-1. Carte choroplèthe (aplat de couleur).
+1.  Carte choroplèthe (aplat de couleur).
 
 ```{r map_exemple_1}
 mf_raster(tiles_2154)
@@ -308,7 +308,7 @@ mf_map(grid_paris,
 
 \
 
-2. Carte en symbole proportionnel. 
+2.  Carte en symbole proportionnel.
 
 ```{r map_exemple_2}
 mf_raster(tiles_2154)
@@ -325,7 +325,7 @@ mf_map(grid_paris,
 
 \
 
-3. Carte combinée stock et ratio (symbole proportionnel + aplat de couleur).
+3.  Carte combinée stock et ratio (symbole proportionnel + aplat de couleur).
 
 ```{r map_exemple_3}
 mf_raster(tiles_2154)
@@ -344,7 +344,7 @@ mf_map(grid_paris,
 
 \
 
-### Densité lissage KDE 
+### Densité lissage KDE
 
 Construction d'un objet ppp (spatstat) à partir du semi de point.
 
