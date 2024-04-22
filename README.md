@@ -26,7 +26,6 @@ Le fichier de données est mis à disposition dans le répertoire **data**.
 
 ![](img/data.png)
 
-
 **Le fichier GeoPackage** (**GeoSenegal.gpkg**) contient 8 couches géographiques :
 
 - **paris** : Couche des arrondissments de la commune de Paris. Source : BD CARTO IGN, 2014    
