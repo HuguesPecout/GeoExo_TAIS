@@ -1,4 +1,4 @@
-# Traitement et analyse de l’information spatialisée avec R <img src="img/ehess.png" align="right" width="140"/>
+# Traitement et analyse de l’IG avec R <img src="img/ehess.png" align="right" width="140"/>
 
 ### Séminaire EHESS TAIS 2023-2024
 
